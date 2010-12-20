@@ -8,12 +8,14 @@ var sys = require('sys');
 var Store = require('connect/middleware/session/store');
 var connectionString = (process.argv[2]||"").replace("--con=","")
 var tableName = "test_connect_session";
+
 var log = function() {};
+
+var PostgresStore = require(__dirname + '/../lib');
 
 var log = function() {
   console.log.apply(console, arguments);
 }
-
 
 assert = require('assert');
 
@@ -98,43 +100,6 @@ var testSetup = function(callback) {
   }))
 }
 
-var PostgresStore = function(options) {
-  this.connectionString = options.connectionString;
-  var options = options || {};
-  Store.call(this, options)
-}
-
-sys.inherits(PostgresStore, Store)
-var p = PostgresStore.prototype;
-
-p.get = function(hash, callback) {
-  pg.connect(this.connectionString, function(err, client) {
-    if(err) {
-      return callback(err);
-    }
-    client.query("SELECT data FROM " + tableName + " WHERE key = $1", [hash], function(err, result) {
-      log("recieved result %j", result);
-
-      if(!err) {
-        var item = JSON.parse(result.rows[0].data||"{}");
-        log(item);
-      }
-      return callback(err, item)
-    })
-  })
-}
-
-p.set = function(hash, data, callback) {
-  log("setting %s %j", hash, data)
-  pg.connect(this.connectionString, function(err, client) {
-    log("Connected");
-    if(err) {
-      log("Error");
-      return callback(err);
-    }
-    client.query("INSERT INTO " + tableName +"(key, data) VALUES($1, $2)",[hash, JSON.stringify(data)], callback)
-  })
-}
 var store = new PostgresStore({connectionString: connectionString});
 
 var testServer = connect.createServer(
